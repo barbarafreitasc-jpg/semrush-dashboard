@@ -1,8 +1,5 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs",
-  "env": {
-    "SEMRUSH_API_KEY": "@semrush_api_key"
-  }
+  "framework": "nextjs"
 }
