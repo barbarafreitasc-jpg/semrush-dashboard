@@ -1,77 +1,151 @@
 'use client';
 
-import { Sparkles, Info } from 'lucide-react';
+import { Sparkles, Bot, TrendingUp, Star, ExternalLink } from 'lucide-react';
 
 /**
- * AIVisibilityCard — Painel de Visibilidade em IA (LLMs).
+ * AIVisibilityCard — Painel de Visibilidade em IA (Google AI Overviews).
  *
- * O SEMrush lançou o recurso "AI Overview Tracking" e "Copilot" em 2024–2025.
- * A API pública para este recurso ainda é restrita (beta fechado).
- *
- * Este componente exibe as instruções para ativar assim que o acesso for liberado,
- * e já está estruturado para consumir o endpoint quando disponível.
- *
- * Para verificar disponibilidade: https://developer.semrush.com/api/
+ * Exibe quais keywords do domínio aparecem em AI Overviews do Google,
+ * calculadas a partir da coluna 'Ai' do endpoint domain_organic da SEMrush API.
  */
 export default function AIVisibilityCard({ data = null, loading = false }) {
-  // Quando o endpoint estiver disponível, "data" terá a estrutura:
-  // { visibility_score, mentions, top_queries: [], trend: [] }
-
   if (loading) {
     return (
-      <div className="bg-surface-card border border-surface-border rounded-2xl p-5 animate-pulse h-40">
-        <div className="h-5 bg-surface-border rounded w-48 mb-3" />
-        <div className="h-20 bg-surface-border rounded" />
+      <div className="bg-surface-card border border-surface-border rounded-2xl p-5 animate-pulse">
+        <div className="h-5 bg-surface-border rounded w-48 mb-4" />
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-16 bg-surface-border rounded-xl" />
+          ))}
+        </div>
+        <div className="h-32 bg-surface-border rounded-xl" />
       </div>
     );
   }
 
+  if (!data) {
+    return (
+      <div className="bg-surface-card border border-purple-500/20 rounded-2xl p-5 flex items-center justify-center min-h-[160px]">
+        <div className="text-center text-slate-500 text-sm">
+          <Sparkles size={20} className="mx-auto mb-2 text-purple-400/40" />
+          Analise um domínio para ver os dados de IA
+        </div>
+      </div>
+    );
+  }
+
+  const hasAIData = data.aiKeywords > 0;
+
+  const scoreColor =
+    data.visibilityScore >= 30 ? 'text-emerald-400' :
+    data.visibilityScore >= 10 ? 'text-yellow-400' :
+    'text-red-400';
+
+  const scoreBg =
+    data.visibilityScore >= 30 ? 'bg-emerald-500/10 border-emerald-500/20' :
+    data.visibilityScore >= 10 ? 'bg-yellow-500/10 border-yellow-500/20' :
+    'bg-red-500/10 border-red-500/20';
+
   return (
     <div className="bg-surface-card border border-purple-500/20 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-3">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
         <Sparkles size={14} className="text-purple-400" />
         <h3 className="text-sm font-semibold text-slate-300">
-          Visibilidade em IA (LLMs)
+          Visibilidade em IA (Google AI Overviews)
         </h3>
-        <span className="ml-auto text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full px-2 py-0.5">
-          BETA
-        </span>
+        <a
+          href="https://pt.semrush.com/ai-seo/overview/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto text-[10px] font-medium text-purple-400 hover:text-purple-300 flex items-center gap-1"
+        >
+          Ver no SEMrush <ExternalLink size={9} />
+        </a>
       </div>
 
-      {data ? (
-        // Quando dados estiverem disponíveis
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-slate-500 text-xs mb-1">Score de Visibilidade</p>
-            <p className="text-2xl font-bold text-purple-400">{data.visibility_score ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-slate-500 text-xs mb-1">Menções detectadas</p>
-            <p className="text-2xl font-bold text-white">{data.mentions ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-slate-500 text-xs mb-1">Queries rastreadas</p>
-            <p className="text-2xl font-bold text-white">{data.top_queries?.length ?? '—'}</p>
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className={`rounded-xl p-3 border ${scoreBg}`}>
+          <p className="text-[10px] text-slate-500 mb-1">Score de Visibilidade</p>
+          <p className={`text-2xl font-bold ${scoreColor}`}>
+            {data.visibilityScore}<span className="text-sm font-normal">%</span>
+          </p>
+          <p className="text-[10px] text-slate-600 mt-0.5">das top keywords</p>
+        </div>
+
+        <div className="rounded-xl p-3 border border-surface-border bg-surface-border/30">
+          <p className="text-[10px] text-slate-500 mb-1">Keywords em AI</p>
+          <p className="text-2xl font-bold text-purple-400">{data.aiKeywords}</p>
+          <p className="text-[10px] text-slate-600 mt-0.5">de {data.totalKeywordsAnalyzed} analisadas</p>
+        </div>
+
+        <div className="rounded-xl p-3 border border-surface-border bg-surface-border/30">
+          <p className="text-[10px] text-slate-500 mb-1">Featured Snippets</p>
+          <p className="text-2xl font-bold text-cyan-400">{data.featuredSnippets}</p>
+          <p className="text-[10px] text-slate-600 mt-0.5">posições conquistadas</p>
+        </div>
+      </div>
+
+      {/* Barra de tráfego via AI */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] text-slate-500 flex items-center gap-1">
+            <Bot size={9} />
+            Tráfego estimado via AI Overviews
+          </span>
+          <span className="text-[10px] font-semibold text-purple-400">{data.aiTrafficPct}%</span>
+        </div>
+        <div className="h-1.5 bg-surface-border rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-purple-500 to-purple-400 rounded-full transition-all duration-700"
+            style={{ width: `${Math.min(data.aiTrafficPct, 100)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Lista de top keywords com AI */}
+      {hasAIData ? (
+        <div>
+          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-2">
+            Top keywords com AI Overview
+          </p>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+            {data.topAIKeywords.slice(0, 10).map((kw, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-2 bg-surface-border/30 rounded-lg px-2.5 py-1.5 group"
+              >
+                <span className="text-[10px] text-slate-600 w-4 shrink-0">{idx + 1}</span>
+                <span className="text-xs text-slate-300 flex-1 truncate font-medium">{kw.keyword}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-slate-500 hidden sm:block">
+                    vol {kw.volume.toLocaleString('pt-BR')}
+                  </span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                    kw.position <= 3
+                      ? 'bg-emerald-500/15 text-emerald-400'
+                      : kw.position <= 10
+                      ? 'bg-brand-500/15 text-brand-400'
+                      : 'bg-slate-500/15 text-slate-400'
+                  }`}>
+                    #{kw.position}
+                  </span>
+                  <Star size={9} className="text-purple-400" />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
-        // Estado de espera pelo acesso à API
-        <div className="flex gap-3 bg-purple-500/5 border border-purple-500/10 rounded-xl p-4">
-          <Info size={15} className="text-purple-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-slate-400 space-y-1.5">
-            <p>
-              O SEMrush liberou o <strong className="text-slate-300">AI Overview Tracking</strong> (rastreamento de menções em respostas de ChatGPT, Gemini, Copilot e Perplexity) em 2025.
-            </p>
-            <p>
-              O acesso via API ainda está em <strong className="text-purple-400">beta fechado</strong>. Quando liberado, este painel será populado automaticamente via o endpoint:
-            </p>
-            <code className="block bg-surface-border rounded px-2 py-1 text-slate-300 text-[11px] mt-1 font-mono">
-              GET /api/semrush/ai-visibility?domain=...
-            </code>
-            <p>
-              Para solicitar acesso: <a href="https://www.semrush.com/ai-overview/" target="_blank" rel="noopener noreferrer" className="text-brand-500 underline">semrush.com/ai-overview</a>
-            </p>
-          </div>
+        <div className="bg-surface-border/30 rounded-xl p-4 text-center">
+          <Bot size={16} className="mx-auto mb-2 text-slate-600" />
+          <p className="text-xs text-slate-500">
+            Nenhuma keyword deste domínio foi detectada em AI Overviews do Google no período selecionado.
+          </p>
+          <p className="text-[10px] text-slate-600 mt-1">
+            Isso pode indicar oportunidade de otimização para IA.
+          </p>
         </div>
       )}
     </div>

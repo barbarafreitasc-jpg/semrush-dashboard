@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import {
   Globe,
@@ -10,8 +10,7 @@ import {
   RefreshCw,
   Search,
   AlertCircle,
-  CheckCircle2,
-  ChevronDown,
+  Calendar,
 } from 'lucide-react';
 
 import KPICard          from '@/components/KPICard';
@@ -29,19 +28,23 @@ const fetcher = url => fetch(url).then(r => {
   return r.json();
 });
 
-// ─── Hook reutilizável para chamar os endpoints do dashboard ──────────────────
+// ─── Gera lista de meses para o seletor (últimos 24 meses) ───────────────────
 
-function useSemrush(endpoint, domain, database, refreshInterval) {
-  const key = domain
-    ? `/api/semrush/${endpoint}?domain=${encodeURIComponent(domain)}&database=${database}`
-    : null;
-
-  return useSWR(key, fetcher, {
-    refreshInterval,
-    revalidateOnFocus: false,
-    dedupingInterval:  30_000,
-  });
+function generateMonthOptions() {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const value = `${y}${m}01`;
+    const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    months.push({ value, label });
+  }
+  return months;
 }
+
+const MONTH_OPTIONS = generateMonthOptions();
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +85,32 @@ function Header({ domain, lastUpdate, onRefresh, refreshing }) {
         </div>
       </div>
     </header>
+  );
+}
+
+// ─── Barra de filtro de data ──────────────────────────────────────────────────
+
+function DateFilterBar({ value, onChange }) {
+  const selected = MONTH_OPTIONS.find(m => m.value === value);
+  return (
+    <div className="bg-surface-card/70 border-b border-surface-border backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3">
+        <Calendar size={13} className="text-brand-500 shrink-0" />
+        <span className="text-xs text-slate-400 font-medium shrink-0">Período:</span>
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="bg-surface-border border border-surface-border/80 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-brand-500 focus:outline-none appearance-none cursor-pointer min-w-[180px]"
+        >
+          {MONTH_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <span className="text-[10px] text-slate-600 hidden sm:block">
+          Afeta keywords, tráfego e concorrentes · Backlinks sempre exibem dados atuais
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -189,7 +218,7 @@ function SearchForm({ onSubmit }) {
 
 // ─── Alerta de erro ───────────────────────────────────────────────────────────
 
-function ErrorAlert({ message, onDismiss }) {
+function ErrorAlert({ message }) {
   return (
     <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
       <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
@@ -197,9 +226,6 @@ function ErrorAlert({ message, onDismiss }) {
         <p className="text-sm font-semibold text-red-300">Erro ao buscar dados</p>
         <p className="text-xs text-red-400/80 mt-0.5">{message}</p>
       </div>
-      <button onClick={onDismiss} className="text-red-400 hover:text-red-200 text-xs shrink-0">
-        Fechar
-      </button>
     </div>
   );
 }
@@ -207,7 +233,8 @@ function ErrorAlert({ message, onDismiss }) {
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 
 function Dashboard({ domain, database, refreshInterval }) {
-  const [manualKey, setManualKey] = useState(0);
+  const [manualKey,  setManualKey]  = useState(0);
+  const [dateFilter, setDateFilter] = useState(MONTH_OPTIONS[0].value); // mês atual
 
   const swrOpts = {
     refreshInterval,
@@ -216,7 +243,11 @@ function Dashboard({ domain, database, refreshInterval }) {
   };
 
   const buildKey = (endpoint) =>
-    `/api/semrush/${endpoint}?domain=${encodeURIComponent(domain)}&database=${database}&_k=${manualKey}`;
+    `/api/semrush/${endpoint}?domain=${encodeURIComponent(domain)}&database=${database}&date=${dateFilter}&_k=${manualKey}`;
+
+  // Backlinks não usa filtro de data (dado sempre atual)
+  const buildBacklinksKey = () =>
+    `/api/semrush/backlinks?domain=${encodeURIComponent(domain)}&_k=${manualKey}`;
 
   const { data: overviewData, error: overviewErr, isLoading: overviewLoading } =
     useSWR(buildKey('overview'), fetcher, swrOpts);
@@ -225,10 +256,13 @@ function Dashboard({ domain, database, refreshInterval }) {
     useSWR(buildKey('keywords'), fetcher, swrOpts);
 
   const { data: blData, error: blErr, isLoading: blLoading } =
-    useSWR(buildKey('backlinks'), fetcher, swrOpts);
+    useSWR(buildBacklinksKey(), fetcher, swrOpts);
 
   const { data: compData, error: compErr, isLoading: compLoading } =
     useSWR(buildKey('competitors'), fetcher, swrOpts);
+
+  const { data: aiData, error: aiErr, isLoading: aiLoading } =
+    useSWR(buildKey('ai-visibility'), fetcher, swrOpts);
 
   const overview    = overviewData?.overview;
   const history     = overviewData?.history    ?? [];
@@ -240,9 +274,14 @@ function Dashboard({ domain, database, refreshInterval }) {
   const anyError = overviewErr || kwErr || blErr || compErr;
   const errorMsg = anyError?.error || anyError?.message || 'Verifique sua API key e o domínio informado.';
 
-  const isLoading = overviewLoading || kwLoading || blLoading || compLoading;
+  const isLoading = overviewLoading || kwLoading || blLoading || compLoading || aiLoading;
 
   const handleRefresh = () => setManualKey(k => k + 1);
+
+  const handleDateChange = (newDate) => {
+    setDateFilter(newDate);
+    setManualKey(k => k + 1);
+  };
 
   return (
     <>
@@ -253,12 +292,12 @@ function Dashboard({ domain, database, refreshInterval }) {
         refreshing={isLoading}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {anyError && (
-          <ErrorAlert message={errorMsg} onDismiss={() => {}} />
-        )}
+      <DateFilterBar value={dateFilter} onChange={handleDateChange} />
 
-        {/* KPI Cards */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {anyError && <ErrorAlert message={errorMsg} />}
+
+        {/* KPI Cards — linha 1 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KPICard
             title="Tráfego Orgânico Est."
@@ -294,7 +333,7 @@ function Dashboard({ domain, database, refreshInterval }) {
           />
         </div>
 
-        {/* Segunda linha KPIs */}
+        {/* KPI Cards — linha 2 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KPICard
             title="Valor Tráfego Orgânico"
@@ -340,10 +379,10 @@ function Dashboard({ domain, database, refreshInterval }) {
           loading={compLoading}
         />
 
-        {/* Keywords + Backlinks lado a lado em tela grande */}
+        {/* Backlinks + IA lado a lado */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <BacklinksPanel data={backlinks} loading={blLoading} />
-          <AIVisibilityCard data={null} loading={false} />
+          <AIVisibilityCard data={aiData ?? null} loading={aiLoading} />
         </div>
 
         {/* Tabela de Keywords */}

@@ -1,5 +1,5 @@
 /**
- * GET /api/semrush/overview?domain=seusite.com&database=br
+ * GET /api/semrush/overview?domain=seusite.com&database=br&date=YYYYMM01
  * Retorna visão geral do domínio: tráfego, keywords, custo, histórico.
  */
 
@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const domain   = searchParams.get('domain')?.toLowerCase().trim();
-  const database = searchParams.get('database') || 'br';
+  const domain      = searchParams.get('domain')?.toLowerCase().trim();
+  const database    = searchParams.get('database') || 'br';
+  const displayDate = searchParams.get('date') || null;
 
   if (!domain) {
     return NextResponse.json({ error: 'Parâmetro "domain" é obrigatório.' }, { status: 400 });
@@ -27,17 +28,13 @@ export async function GET(request) {
 
   try {
     const [overview, history] = await Promise.all([
-      getDomainOverview(domain, database),
+      getDomainOverview(domain, database, displayDate),
       getTrafficHistory(domain, database),
     ]);
 
     return NextResponse.json(
       { overview, history, fetchedAt: new Date().toISOString() },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
-        },
-      }
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (err) {
     console.error('[/api/semrush/overview]', err.message);
