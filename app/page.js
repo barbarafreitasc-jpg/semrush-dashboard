@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import {
   Globe,
@@ -11,6 +11,7 @@ import {
   Search,
   AlertCircle,
   Clock,
+  Calendar,
 } from 'lucide-react';
 
 import KPICard          from '@/components/KPICard';
@@ -28,6 +29,26 @@ const fetcher = url => fetch(url).then(r => {
   return r.json();
 });
 
+// ─── Gera lista de meses (últimos 24) ─────────────────────────────────────────
+
+function generateMonths() {
+  const list = [{ value: 'current', label: 'Dados atuais' }];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    // SEMrush history dates são YYYYMM15
+    list.push({
+      value: `${y}${m}15`,
+      label: d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+    });
+  }
+  return list;
+}
+
+const MONTHS = generateMonths();
+
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 function Header({ domain, lastUpdate, onRefresh, refreshing }) {
@@ -40,14 +61,12 @@ function Header({ domain, lastUpdate, onRefresh, refreshing }) {
           </div>
           <span className="font-bold text-white text-sm hidden sm:block">SEMrush Dashboard</span>
         </div>
-
         {domain && (
           <div className="flex items-center gap-1.5 bg-surface-border rounded-lg px-3 py-1.5 text-sm text-slate-300 font-medium ml-2">
             <Globe size={12} className="text-brand-500" />
             {domain}
           </div>
         )}
-
         <div className="ml-auto flex items-center gap-3">
           {lastUpdate && (
             <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500">
@@ -68,6 +87,33 @@ function Header({ domain, lastUpdate, onRefresh, refreshing }) {
         </div>
       </div>
     </header>
+  );
+}
+
+// ─── Barra de filtro de período ───────────────────────────────────────────────
+
+function PeriodBar({ value, onChange }) {
+  return (
+    <div className="bg-surface-card/60 border-b border-surface-border backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center gap-3">
+        <Calendar size={12} className="text-brand-500 shrink-0" />
+        <span className="text-xs text-slate-400 font-medium shrink-0">Período:</span>
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="bg-surface-border border border-surface-border/80 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-brand-500 focus:outline-none appearance-none cursor-pointer"
+        >
+          {MONTHS.map(m => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+        {value !== 'current' && (
+          <span className="text-[10px] text-amber-500/80 hidden sm:block">
+            Tráfego e keywords refletem o histórico do período · Keywords e concorrentes mostram dados atuais
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -110,12 +156,9 @@ function SearchForm({ onSubmit }) {
           <h1 className="text-3xl font-bold text-white mb-2">SEMrush Dashboard</h1>
           <p className="text-slate-400">Análise de SEO em tempo real via API do SEMrush</p>
         </div>
-
         <form onSubmit={handleSubmit} className="bg-surface-card border border-surface-border rounded-2xl p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Domínio para análise
-            </label>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">Domínio para análise</label>
             <div className="relative">
               <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
@@ -128,7 +171,6 @@ function SearchForm({ onSubmit }) {
               />
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">Base de dados</label>
@@ -137,9 +179,7 @@ function SearchForm({ onSubmit }) {
                 onChange={e => setDatabase(e.target.value)}
                 className="w-full bg-surface-border border border-surface-border rounded-xl px-3 py-2.5 text-slate-200 focus:border-brand-500 focus:outline-none appearance-none cursor-pointer"
               >
-                {DATABASES.map(db => (
-                  <option key={db.value} value={db.value}>{db.label}</option>
-                ))}
+                {DATABASES.map(db => <option key={db.value} value={db.value}>{db.label}</option>)}
               </select>
             </div>
             <div>
@@ -149,13 +189,10 @@ function SearchForm({ onSubmit }) {
                 onChange={e => setInterval(Number(e.target.value))}
                 className="w-full bg-surface-border border border-surface-border rounded-xl px-3 py-2.5 text-slate-200 focus:border-brand-500 focus:outline-none appearance-none cursor-pointer"
               >
-                {INTERVALS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
+                {INTERVALS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
           </div>
-
           <button
             type="submit"
             className="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
@@ -164,11 +201,6 @@ function SearchForm({ onSubmit }) {
             Analisar domínio
           </button>
         </form>
-
-        <p className="text-center text-xs text-slate-600 mt-4">
-          Configure <code className="text-slate-500">SEMRUSH_API_KEY</code> no{' '}
-          <code className="text-slate-500">.env.local</code> antes de usar.
-        </p>
       </div>
     </div>
   );
@@ -180,7 +212,7 @@ function ErrorAlert({ message }) {
   return (
     <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
       <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
+      <div>
         <p className="text-sm font-semibold text-red-300">Erro ao buscar dados</p>
         <p className="text-xs text-red-400/80 mt-0.5">{message}</p>
       </div>
@@ -191,7 +223,8 @@ function ErrorAlert({ message }) {
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 
 function Dashboard({ domain, database, refreshInterval }) {
-  const [manualKey, setManualKey] = useState(0);
+  const [manualKey,    setManualKey]    = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState('current');
 
   const swrOpts = {
     refreshInterval,
@@ -199,42 +232,63 @@ function Dashboard({ domain, database, refreshInterval }) {
     dedupingInterval:  30_000,
   };
 
-  const buildKey = (endpoint) =>
-    `/api/semrush/${endpoint}?domain=${encodeURIComponent(domain)}&database=${database}&_k=${manualKey}`;
+  const buildKey = (ep) =>
+    `/api/semrush/${ep}?domain=${encodeURIComponent(domain)}&database=${database}&_k=${manualKey}`;
 
-  // Backlinks não usa filtro de banco de dados da mesma forma
-  const buildBacklinksKey = () =>
+  const blKey = () =>
     `/api/semrush/backlinks?domain=${encodeURIComponent(domain)}&_k=${manualKey}`;
 
   const { data: overviewData, error: overviewErr, isLoading: overviewLoading } =
     useSWR(buildKey('overview'), fetcher, swrOpts);
 
-  const { data: kwData, error: kwErr, isLoading: kwLoading } =
-    useSWR(buildKey('keywords'), fetcher, swrOpts);
+  const { data: kwData,   error: kwErr,   isLoading: kwLoading   } = useSWR(buildKey('keywords'),      fetcher, swrOpts);
+  const { data: blData,   error: blErr,   isLoading: blLoading   } = useSWR(blKey(),                   fetcher, swrOpts);
+  const { data: compData, error: compErr, isLoading: compLoading } = useSWR(buildKey('competitors'),   fetcher, swrOpts);
+  const { data: aiData,                   isLoading: aiLoading   } = useSWR(buildKey('ai-visibility'), fetcher, swrOpts);
 
-  const { data: blData, error: blErr, isLoading: blLoading } =
-    useSWR(buildBacklinksKey(), fetcher, swrOpts);
-
-  const { data: compData, error: compErr, isLoading: compLoading } =
-    useSWR(buildKey('competitors'), fetcher, swrOpts);
-
-  const { data: aiData, error: aiErr, isLoading: aiLoading } =
-    useSWR(buildKey('ai-visibility'), fetcher, swrOpts);
-
-  const overview    = overviewData?.overview;
-  const history     = overviewData?.history    ?? [];
-  const keywords    = kwData?.keywords          ?? [];
+  const history     = overviewData?.history ?? [];
+  const keywords    = kwData?.keywords      ?? [];
   const backlinks   = blData;
-  const competitors = compData?.competitors     ?? [];
+  const competitors = compData?.competitors  ?? [];
   const lastUpdate  = overviewData?.fetchedAt;
 
-  // Apenas erros críticos (overview e keywords) aparecem no alerta
+  // ─── Aplicar filtro de período ───────────────────────────────────────────
+  // Quando um mês histórico é selecionado, buscamos os dados no histórico.
+  // Quando "current", usamos o snapshot atual da API.
+  const displayOverview = useMemo(() => {
+    if (selectedPeriod === 'current' || !overviewData) {
+      return overviewData?.overview ?? null;
+    }
+    // Encontra o mês no histórico (formato YYYYMM15)
+    const entry = history.find(h => h.date === selectedPeriod);
+    if (!entry) return overviewData?.overview ?? null;
+
+    // Monta um objeto overview a partir dos dados históricos disponíveis
+    const base = overviewData?.overview ?? {};
+    return {
+      ...base,
+      organicKeywords: entry.keywords,
+      organicTraffic:  entry.traffic,
+      organicCost:     entry.cost,
+    };
+  }, [selectedPeriod, overviewData, history]);
+
+  // ─── Filtrar histórico para o gráfico ────────────────────────────────────
+  const chartHistory = useMemo(() => {
+    if (selectedPeriod === 'current') return history;
+    // Ao filtrar por mês, destaca no gráfico apenas até aquele ponto
+    const idx = history.findIndex(h => h.date === selectedPeriod);
+    return idx >= 0 ? history.slice(idx) : history;
+  }, [selectedPeriod, history]);
+
   const criticalError = overviewErr || kwErr;
   const errorMsg = criticalError?.error || criticalError?.message || 'Verifique sua API key e o domínio informado.';
-
   const isLoading = overviewLoading || kwLoading || blLoading || compLoading;
 
-  const handleRefresh = () => setManualKey(k => k + 1);
+  const handleRefresh = () => {
+    setManualKey(k => k + 1);
+    setSelectedPeriod('current');
+  };
 
   return (
     <>
@@ -245,6 +299,8 @@ function Dashboard({ domain, database, refreshInterval }) {
         refreshing={isLoading}
       />
 
+      <PeriodBar value={selectedPeriod} onChange={setSelectedPeriod} />
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {criticalError && <ErrorAlert message={errorMsg} />}
 
@@ -252,7 +308,7 @@ function Dashboard({ domain, database, refreshInterval }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KPICard
             title="Tráfego Orgânico Est."
-            value={formatNumber(overview?.organicTraffic)}
+            value={formatNumber(displayOverview?.organicTraffic)}
             icon={<TrendingUp size={16} />}
             color="text-brand-500"
             loading={overviewLoading}
@@ -260,7 +316,7 @@ function Dashboard({ domain, database, refreshInterval }) {
           />
           <KPICard
             title="Keywords Orgânicas"
-            value={formatNumber(overview?.organicKeywords)}
+            value={formatNumber(displayOverview?.organicKeywords)}
             icon={<Key size={16} />}
             color="text-emerald-400"
             loading={overviewLoading}
@@ -275,7 +331,7 @@ function Dashboard({ domain, database, refreshInterval }) {
             subtitle={`${formatNumber(backlinks?.overview?.referringDomains)} domínios ref.`}
           />
           <KPICard
-            title="Concorrentes Orgânicos"
+            title="Concorrentes"
             value={formatNumber(competitors?.length)}
             icon={<Users size={16} />}
             color="text-orange-400"
@@ -288,7 +344,7 @@ function Dashboard({ domain, database, refreshInterval }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KPICard
             title="Valor Tráfego Orgânico"
-            value={formatCurrency(overview?.organicCost)}
+            value={formatCurrency(displayOverview?.organicCost)}
             icon={<TrendingUp size={16} />}
             color="text-yellow-400"
             loading={overviewLoading}
@@ -296,7 +352,7 @@ function Dashboard({ domain, database, refreshInterval }) {
           />
           <KPICard
             title="Keywords Pagas"
-            value={formatNumber(overview?.paidKeywords)}
+            value={formatNumber(displayOverview?.paidKeywords)}
             icon={<Key size={16} />}
             color="text-pink-400"
             loading={overviewLoading}
@@ -312,7 +368,7 @@ function Dashboard({ domain, database, refreshInterval }) {
           />
           <KPICard
             title="Rank SEMrush"
-            value={formatNumber(overview?.rank)}
+            value={formatNumber(displayOverview?.rank)}
             icon={<TrendingUp size={16} />}
             color="text-slate-400"
             loading={overviewLoading}
@@ -321,7 +377,7 @@ function Dashboard({ domain, database, refreshInterval }) {
         </div>
 
         {/* Gráfico de Tráfego */}
-        <TrafficChart data={history} loading={overviewLoading} />
+        <TrafficChart data={chartHistory} loading={overviewLoading} />
 
         {/* Concorrentes */}
         <CompetitorsChart
@@ -330,7 +386,7 @@ function Dashboard({ domain, database, refreshInterval }) {
           loading={compLoading}
         />
 
-        {/* Backlinks + IA lado a lado */}
+        {/* Backlinks + IA */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <BacklinksPanel data={backlinks} loading={blLoading} />
           <AIVisibilityCard data={aiData ?? null} loading={aiLoading} />
@@ -342,15 +398,10 @@ function Dashboard({ domain, database, refreshInterval }) {
         {/* Footer */}
         <footer className="text-center text-xs text-slate-600 pb-4">
           Dados fornecidos pela{' '}
-          <a
-            href="https://developer.semrush.com/api/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-brand-500 hover:underline"
-          >
+          <a href="https://developer.semrush.com/api/" target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:underline">
             API do SEMrush
           </a>
-          {refreshInterval > 0 && ` · Atualização automática a cada ${refreshInterval / 60_000} min`}
+          {refreshInterval > 0 && ` · Auto-refresh a cada ${refreshInterval / 60_000} min`}
         </footer>
       </main>
     </>
@@ -362,19 +413,7 @@ function Dashboard({ domain, database, refreshInterval }) {
 export default function Home() {
   const [config, setConfig] = useState(null);
 
-  const handleSubmit = (domain, database, interval) => {
-    setConfig({ domain, database, interval });
-  };
+  if (!config) return <SearchForm onSubmit={(d, db, i) => setConfig({ domain: d, database: db, interval: i })} />;
 
-  if (!config) {
-    return <SearchForm onSubmit={handleSubmit} />;
-  }
-
-  return (
-    <Dashboard
-      domain={config.domain}
-      database={config.database}
-      refreshInterval={config.interval}
-    />
-  );
+  return <Dashboard domain={config.domain} database={config.database} refreshInterval={config.interval} />;
 }
