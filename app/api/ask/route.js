@@ -1,26 +1,2 @@
-import { NextResponse } from 'next/server';
-
-export async function POST(request) {
-  try {
-    const { question, context } = await request.json();
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ answer: 'Para ativar o assistente, adicione ANTHROPIC_API_KEY nas variaveis de ambiente do Vercel.' });
-    }
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
-        system: 'Voce e um especialista em SEO e marketing digital analisando dados do dominio bry.com.br, empresa brasileira de certificacao digital. Responda em portugues, de forma direta e pratica. Maximo 3 paragrafos. Foque em insights acionaveis. Sem markdown excessivo.',
-        messages: [{ role: 'user', content: 'Dados atuais do dashboard SEMrush:\n\n' + context + '\n\nPergunta: ' + question }]
-      })
-    });
-    const data = await response.json();
-    if (data.error) return NextResponse.json({ answer: 'Erro na API: ' + (data.error.message || 'Verifique sua chave.') });
-    return NextResponse.json({ answer: data.content?.[0]?.text || 'Sem resposta.' });
-  } catch (error) {
-    return NextResponse.json({ answer: 'Erro interno. Tente novamente.' });
-  }
-}
+// v2 — ANTHROPIC_API_KEY configurada
+import { NextResponse } from 'next/server';export async function POST(request) {  try {    const { question, context } = await request.json();    const apiKey = process.env.ANTHROPIC_API_KEY;    if (!apiKey) {      return NextResponse.json({ answer: 'Para ativar o assistente, adicione ANTHROPIC_API_KEY nas variaveis de ambiente do Vercel.' });    }    const response = await fetch('https://api.anthropic.com/v1/messages', {      method: 'POST',      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },      body: JSON.stringify({        model: 'claude-haiku-4-5-20251001',        max_tokens: 600,        system: 'Voce e um especialista em SEO e marketing digital analisando dados do dominio bry.com.br, empresa brasileira de certificacao digital. Responda em portugues, de forma direta e pratica. Maximo 3 paragrafos. Foque em insights acionaveis. Sem markdown excessivo.',        messages: [{ role: 'user', content: 'Dados atuais do dashboard SEMrush:\n\n' + context + '\n\nPergunta: ' + question }]      })    });    const data = await response.json();    if (data.error) return NextResponse.json({ answer: 'Erro na API: ' + (data.error.message || 'Verifique sua chave.') });    return NextResponse.json({ answer: data.content?.[0]?.text || 'Sem resposta.' });  } catch (error) {    return NextResponse.json({ answer: 'Erro interno. Tente novamente.' });  }}
