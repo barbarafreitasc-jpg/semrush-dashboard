@@ -37,7 +37,7 @@ function generateMonthOptions() {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
-    const value = `${y}${m}01`;
+    const value = `${y}${m}15`;
     const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     months.push({ value, label });
   }
