@@ -1,9 +1,6 @@
 /**
- * GET /api/semrush/ai-visibility?domain=seusite.com&database=br&date=YYYYMM01
+ * GET /api/semrush/ai-visibility?domain=seusite.com&database=br
  * Retorna dados de visibilidade em IA (Google AI Overviews) para o domínio.
- *
- * Usa o endpoint domain_organic com a coluna 'Ai' para detectar
- * quais keywords do domínio aparecem em AI Overviews do Google.
  */
 
 import { NextResponse } from 'next/server';
@@ -14,9 +11,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const domain      = searchParams.get('domain')?.toLowerCase().trim();
-  const database    = searchParams.get('database') || 'br';
-  const displayDate = searchParams.get('date') || null;
+  const domain   = searchParams.get('domain')?.toLowerCase().trim();
+  const database = searchParams.get('database') || 'br';
 
   if (!domain) {
     return NextResponse.json({ error: 'Parâmetro "domain" é obrigatório.' }, { status: 400 });
@@ -30,7 +26,7 @@ export async function GET(request) {
   }
 
   try {
-    const data = await getAIVisibilityData(domain, database, displayDate);
+    const data = await getAIVisibilityData(domain, database);
     return NextResponse.json(
       { ...data, fetchedAt: new Date().toISOString() },
       { headers: { 'Cache-Control': 'no-store' } }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import {
   Globe,
@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Search,
   AlertCircle,
-  Calendar,
+  Clock,
 } from 'lucide-react';
 
 import KPICard          from '@/components/KPICard';
@@ -27,24 +27,6 @@ const fetcher = url => fetch(url).then(r => {
   if (!r.ok) return r.json().then(e => Promise.reject(e));
   return r.json();
 });
-
-// ─── Gera lista de meses para o seletor (últimos 24 meses) ───────────────────
-
-function generateMonthOptions() {
-  const months = [];
-  const now = new Date();
-  for (let i = 0; i < 24; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const value = `${y}${m}15`;
-    const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    months.push({ value, label });
-  }
-  return months;
-}
-
-const MONTH_OPTIONS = generateMonthOptions();
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 
@@ -68,9 +50,10 @@ function Header({ domain, lastUpdate, onRefresh, refreshing }) {
 
         <div className="ml-auto flex items-center gap-3">
           {lastUpdate && (
-            <span className="text-xs text-slate-500 hidden md:block">
-              Atualizado: {new Date(lastUpdate).toLocaleTimeString('pt-BR')}
-            </span>
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500">
+              <Clock size={10} />
+              <span>{new Date(lastUpdate).toLocaleTimeString('pt-BR')}</span>
+            </div>
           )}
           {domain && (
             <button
@@ -85,32 +68,6 @@ function Header({ domain, lastUpdate, onRefresh, refreshing }) {
         </div>
       </div>
     </header>
-  );
-}
-
-// ─── Barra de filtro de data ──────────────────────────────────────────────────
-
-function DateFilterBar({ value, onChange }) {
-  const selected = MONTH_OPTIONS.find(m => m.value === value);
-  return (
-    <div className="bg-surface-card/70 border-b border-surface-border backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center gap-3">
-        <Calendar size={13} className="text-brand-500 shrink-0" />
-        <span className="text-xs text-slate-400 font-medium shrink-0">Período:</span>
-        <select
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="bg-surface-border border border-surface-border/80 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-brand-500 focus:outline-none appearance-none cursor-pointer min-w-[180px]"
-        >
-          {MONTH_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <span className="text-[10px] text-slate-600 hidden sm:block">
-          Afeta keywords, tráfego e concorrentes · Backlinks sempre exibem dados atuais
-        </span>
-      </div>
-    </div>
   );
 }
 
@@ -209,7 +166,8 @@ function SearchForm({ onSubmit }) {
         </form>
 
         <p className="text-center text-xs text-slate-600 mt-4">
-          Configure <code className="text-slate-500">SEMRUSH_API_KEY</code> no <code className="text-slate-500">.env.local</code> antes de usar.
+          Configure <code className="text-slate-500">SEMRUSH_API_KEY</code> no{' '}
+          <code className="text-slate-500">.env.local</code> antes de usar.
         </p>
       </div>
     </div>
@@ -233,8 +191,7 @@ function ErrorAlert({ message }) {
 // ─── Dashboard principal ──────────────────────────────────────────────────────
 
 function Dashboard({ domain, database, refreshInterval }) {
-  const [manualKey,  setManualKey]  = useState(0);
-  const [dateFilter, setDateFilter] = useState(MONTH_OPTIONS[0].value); // mês atual
+  const [manualKey, setManualKey] = useState(0);
 
   const swrOpts = {
     refreshInterval,
@@ -243,9 +200,9 @@ function Dashboard({ domain, database, refreshInterval }) {
   };
 
   const buildKey = (endpoint) =>
-    `/api/semrush/${endpoint}?domain=${encodeURIComponent(domain)}&database=${database}&date=${dateFilter}&_k=${manualKey}`;
+    `/api/semrush/${endpoint}?domain=${encodeURIComponent(domain)}&database=${database}&_k=${manualKey}`;
 
-  // Backlinks não usa filtro de data (dado sempre atual)
+  // Backlinks não usa filtro de banco de dados da mesma forma
   const buildBacklinksKey = () =>
     `/api/semrush/backlinks?domain=${encodeURIComponent(domain)}&_k=${manualKey}`;
 
@@ -271,17 +228,13 @@ function Dashboard({ domain, database, refreshInterval }) {
   const competitors = compData?.competitors     ?? [];
   const lastUpdate  = overviewData?.fetchedAt;
 
-  const anyError = overviewErr || kwErr || blErr || compErr;
-  const errorMsg = anyError?.error || anyError?.message || 'Verifique sua API key e o domínio informado.';
+  // Apenas erros críticos (overview e keywords) aparecem no alerta
+  const criticalError = overviewErr || kwErr;
+  const errorMsg = criticalError?.error || criticalError?.message || 'Verifique sua API key e o domínio informado.';
 
-  const isLoading = overviewLoading || kwLoading || blLoading || compLoading || aiLoading;
+  const isLoading = overviewLoading || kwLoading || blLoading || compLoading;
 
   const handleRefresh = () => setManualKey(k => k + 1);
-
-  const handleDateChange = (newDate) => {
-    setDateFilter(newDate);
-    setManualKey(k => k + 1);
-  };
 
   return (
     <>
@@ -292,10 +245,8 @@ function Dashboard({ domain, database, refreshInterval }) {
         refreshing={isLoading}
       />
 
-      <DateFilterBar value={dateFilter} onChange={handleDateChange} />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {anyError && <ErrorAlert message={errorMsg} />}
+        {criticalError && <ErrorAlert message={errorMsg} />}
 
         {/* KPI Cards — linha 1 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -391,7 +342,12 @@ function Dashboard({ domain, database, refreshInterval }) {
         {/* Footer */}
         <footer className="text-center text-xs text-slate-600 pb-4">
           Dados fornecidos pela{' '}
-          <a href="https://developer.semrush.com/api/" target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:underline">
+          <a
+            href="https://developer.semrush.com/api/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand-500 hover:underline"
+          >
             API do SEMrush
           </a>
           {refreshInterval > 0 && ` · Atualização automática a cada ${refreshInterval / 60_000} min`}
