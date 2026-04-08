@@ -59,7 +59,7 @@ export default function KeywordsTable({ keywords = [], loading = false }) {
   const perPage = 15;
 
   const filtered = keywords.filter(k =>
-    k.keyword.toLowerCase().includes(search.toLowerCase())
+    (k?.keyword ?? '').toLowerCase().includes(search.toLowerCase())
   );
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated  = filtered.slice((page - 1) * perPage, page * perPage);
