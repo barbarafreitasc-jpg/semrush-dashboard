@@ -213,7 +213,7 @@ function Dashboard({ domain, database, refreshInterval }) {
           backlinks={backlinks} aiData={aiData} loading={insightsLoading} selectedPeriod={selectedPeriod} />
 
         {/* TIRE SUAS DUVIDAS */}
-        <DashboardChat overview={displayOverview} keywords={keywords} competitors={competitors} backlinks={backlinks} />
+        <DashboardChat domain={domain} overview={displayOverview} keywords={keywords} competitors={competitors} backlinks={backlinks} />
 
         {/* KPIs linha 1 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
