@@ -9,7 +9,7 @@ function fmt(n) {
   return String(n);
 }
 
-export default function DashboardChat({ overview, keywords, competitors, backlinks }) {
+export default function DashboardChat({ domain, overview, keywords, competitors, backlinks }) {
   const [question,        setQuestion]        = useState('');
   const [submittedQ,      setSubmittedQ]      = useState(''); // pergunta que foi enviada de fato
   const [answer,          setAnswer]          = useState('');
@@ -32,7 +32,7 @@ export default function DashboardChat({ overview, keywords, competitors, backlin
   }, []);
 
   const buildContext = () => {
-    let ctx = 'Dominio analisado: bry.com.br (empresa de certificacao digital brasileira)\n\n';
+    let ctx = 'Dominio analisado: ' + (domain || 'desconhecido') + '\n\n';
     if (overview) {
       ctx += 'SEO Overview:\n';
       ctx += '- Trafego organico: ' + fmt(overview.organicTraffic) + ' visitas/mes\n';
