@@ -193,10 +193,25 @@ export default function InsightsBox({ overview, history, keywords, competitors, 
   const [llmData, setLlmData] = useState(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('semrush_ai_llm_v2');
-      if (raw) setLlmData(JSON.parse(raw));
-    } catch {}
+    // Busca do servidor primeiro (funciona em aba anônima), fallback para localStorage
+    fetch('/api/llm-data', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.syncedAt) {
+          setLlmData(d);
+        } else {
+          try {
+            const raw = localStorage.getItem('semrush_ai_llm_v2');
+            if (raw) setLlmData(JSON.parse(raw));
+          } catch {}
+        }
+      })
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem('semrush_ai_llm_v2');
+          if (raw) setLlmData(JSON.parse(raw));
+        } catch {}
+      });
   }, []);
 
   const insights = useMemo(
