@@ -225,10 +225,10 @@ function Dashboard({ domain, database, refreshInterval }) {
 
         {/* KPIs linha 2 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPICard title="Valor Trafego Organico" value={formatCurrency(displayOverview?.organicCost)} icon={<TrendingUp size={16} />} color="text-yellow-400" loading={overviewLoading} subtitle="equivalente em ads/mes" />
-          <KPICard title="Keywords Pagas" value={formatNumber(displayOverview?.paidKeywords)} icon={<Key size={16} />} color="text-pink-400" loading={overviewLoading} subtitle="anuncios ativos" />
           <KPICard title="Authority Score" value={backlinks?.overview?.authorityScore ?? '-'} icon={<Globe size={16} />} color="text-cyan-400" loading={blLoading} subtitle="score 0-100" />
           <KPICard title="Rank SEMrush" value={formatNumber(displayOverview?.rank)} icon={<TrendingUp size={16} />} color="text-slate-400" loading={overviewLoading} subtitle="posicao global" />
+          <KPICard title="Links Dofollow" value={formatNumber(backlinks?.overview?.dofollow)} icon={<Globe size={16} />} color="text-emerald-400" loading={blLoading} subtitle="links que passam autoridade" />
+          <KPICard title="IPs de Referencia" value={formatNumber(backlinks?.overview?.referringIPs)} icon={<Globe size={16} />} color="text-blue-400" loading={blLoading} subtitle="diversidade de origem" />
         </div>
 
         <TrafficChart data={chartHistory} loading={overviewLoading} />
